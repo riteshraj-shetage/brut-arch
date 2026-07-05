@@ -1,0 +1,404 @@
+#!/bin/bash
+# source: https://github.com/riteshraj-shetage/brut-arch.git
+
+set -euo pipefail
+
+# --- COLOR FORMATTING ---
+BOLD="\033[1m"
+RED="\033[1;31m"
+GREEN="\033[1;32m"
+BLUE="\033[1;34m"
+YELLOW="\033[1;33m"
+RESET="\033[0m"
+
+log_info()    { echo -e "${BLUE}[*]${RESET} ${BOLD}$1${RESET}"; }
+log_success() { echo -e "${GREEN}[+]${RESET} ${BOLD}$1${RESET}"; }
+log_warn()    { echo -e "${YELLOW}[!]${RESET} ${BOLD}$1${RESET}"; }
+log_error()   { echo -e "${RED}[×]${RESET} ${BOLD}$1${RESET}"; }
+
+# --- PRE-RUN SAFETY CHECKS ---
+if [[ $EUID -ne 0 ]]; then
+   log_error "This script must be executed as root."
+   exit 1
+fi
+
+if [[ ! -d "/sys/firmware/efi/efivars" ]]; then
+    log_error "UEFI environment not detected. This script requires UEFI mode."
+    exit 1
+fi
+
+clear
+echo -e "${BOLD}====================================================${RESET}"
+echo -e "${BOLD}             ARCH-LINUX: DISK SETUP                  ${RESET}"
+echo -e "${BOLD}====================================================${RESET}\n"
+
+# --- MANUAL CONFIGURATION ---
+log_info "Configure system identity:"
+read -rp "Enter Hostname [default: archlinux]: " INPUT_HOST
+HOSTNAME="${INPUT_HOST:-archlinux}"
+
+read -rp "Enter Target Username [default: archuser]: " INPUT_USER
+TARGET_USER="${INPUT_USER:-archuser}"
+
+# --- SYSTEM CONFIGS (Defaults) ---
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+KERNEL_PKG="linux"       
+TIMEZONE="Asia/Kolkata"       
+LOCALE="en_US.UTF-8"          
+KEYBOARD_LAYOUT="us"
+MIRROR_COUNTRY="India"
+FS_TYPE="ext4"     
+BOOT_SIZE="+1G"
+
+# --- LIVE ISO ENVIRONMENT SETUP ---
+log_info "Configuring live ISO environment..."
+loadkeys "${KEYBOARD_LAYOUT}"
+timedatectl set-ntp true
+
+log_info "Configuring Live ISO pacman (ParallelDownloads + Color)..."
+sed -i 's/^#ParallelDownloads/ParallelDownloads/; s/^#Color/Color/; /^#Color/a ILoveCandy' /etc/pacman.conf
+
+log_info "Updating pacman mirrorlist for ${MIRROR_COUNTRY} (this may take a few seconds)..."
+reflector --country "${MIRROR_COUNTRY}" --protocol https --latest 5 --sort rate --save /etc/pacman.d/mirrorlist
+
+log_info "Refreshing Arch Linux keyring to prevent PGP signature failures..."
+pacman -Sy --noconfirm archlinux-keyring
+
+echo ""
+log_info "Available Storage Devices:"
+echo -e "${BOLD}----------------------------------------------------${RESET}"
+lsblk -d -p -n -l -o NAME,SIZE,MODEL | grep -E "/dev/(sd|nvme|vd|mmcblk)"
+echo -e "${BOLD}----------------------------------------------------${RESET}\n"
+
+# --- DISK SELECTION ---
+while true; do
+    read -rp "Enter target disk path (e.g., /dev/nvme0n1 or /dev/sda): " DISK
+    
+    if [[ ! -b "$DISK" ]]; then
+        log_error "Device '$DISK' does not exist or is not a block device. Try again."
+        continue
+    fi
+    
+    if lsblk -no MOUNTPOINTS "$DISK" | grep -q "^/run/archiso"; then
+        log_error "Device '$DISK' appears to be the Arch Live ISO medium! Select another disk."
+        continue
+    fi
+    
+    break
+done
+
+# --- DEPLOYMENT MODE SWITCH ---
+echo ""
+log_info "Select Deployment Mode for ${BOLD}$DISK${RESET}:"
+echo -e "  ${BOLD}[1] Whole-Disk Wipe${RESET}  (Tier 1/2: Destroys all data, automated GPT layout)"
+echo -e "  ${BOLD}[2] Shared Dual-Boot${RESET} (Tier 3: Preserves existing Windows/data, uses unallocated space)"
+echo -e "${BOLD}----------------------------------------------------${RESET}"
+read -rp "Enter mode [1 or 2, default: 1]: " DEPLOY_MODE
+DEPLOY_MODE="${DEPLOY_MODE:-1}"
+
+# ==============================================================================
+# --- MODE 1: WHOLE-DISK AUTOMATED WIPE (TIER 1 & 2) ---
+# ==============================================================================
+if [[ "$DEPLOY_MODE" == "1" ]]; do
+    # Get total disk capacity in GB
+    DISK_SIZE_BYTES=$(lsblk -b -d -n -o SIZE "$DISK")
+    DISK_SIZE_GB=$(( DISK_SIZE_BYTES / 1024 / 1024 / 1024 ))
+
+    echo ""
+    log_info "Selected Drive: ${BOLD}$DISK${RESET} (Total Capacity: ${BOLD}${DISK_SIZE_GB} GB${RESET})"
+    log_info "Recommendation: 30 to 50 GB is optimal for Arch Linux root."
+    echo -e "${BOLD}----------------------------------------------------${RESET}"
+
+    while true; do
+        read -rp "Enter desired ROOT partition size in GB [default: 40]: " INPUT_ROOT
+        INPUT_ROOT="${INPUT_ROOT:-40}"
+        
+        if [[ ! "$INPUT_ROOT" =~ ^[0-9]+$ ]]; then
+            log_error "Please enter a valid integer (e.g., 30, 40, 60)."
+            continue
+        fi
+        
+        if (( INPUT_ROOT + 2 >= DISK_SIZE_GB )); then
+            log_error "Size too large! On a ${DISK_SIZE_GB} GB drive, ROOT cannot exceed $(( DISK_SIZE_GB - 2 )) GB."
+            continue
+        fi
+        break
+    done
+
+    ROOT_SIZE="+${INPUT_ROOT}G"
+    log_success "Partition layout locked: [EFI: ${BOOT_SIZE}] [ROOT: ${ROOT_SIZE}] [HOME: REMAINING]"
+
+    # Dynamic mapping
+    if [[ "$DISK" =~ (nvme|mmcblk|loop) ]]; then
+        PART_PREFIX="${DISK}p"
+    else
+        PART_PREFIX="${DISK}"
+    fi
+
+    BOOT_PART="${PART_PREFIX}1"
+    ROOT_PART="${PART_PREFIX}2"
+    HOME_PART="${PART_PREFIX}3"
+
+    echo ""
+    log_warn "WARNING: YOU ARE ABOUT TO PERMANENTLY ERASE ALL DATA ON:"
+    echo -e "${RED}${BOLD} => $DISK ($(lsblk -d -no MODEL "$DISK" | xargs))${RESET}"
+    log_warn "Target layout: [EFI: ${BOOT_SIZE}] [ROOT: ${ROOT_SIZE}] [HOME: REMAINING]"
+    echo ""
+    read -rp "Type 'WIPE' in all caps to authorize destruction of $DISK: " CONFIRM
+
+    if [[ "$CONFIRM" != "WIPE" ]]; then
+        log_info "Authorization failed. Aborting installation. Your disk is untouched."
+        exit 0
+    fi
+
+    echo ""
+    log_info "Starting automated deployment..."
+    log_info "Cleaning up any previous active mounts..."
+    umount -q -R /mnt 2>/dev/null || true
+    swapoff -a 2>/dev/null || true
+
+    log_info "Wiping existing partition table on ${DISK}..."
+    sgdisk --zap-all "${DISK}"
+
+    log_info "Creating new GPT partitions (EFI + Root + Home)..."
+    sgdisk --new=1:0:${BOOT_SIZE} --typecode=1:ef00 --change-name=1:"EFI" "${DISK}"
+    sgdisk --new=2:0:${ROOT_SIZE} --typecode=2:8304 --change-name=2:"ROOT" "${DISK}"
+    sgdisk --new=3:0:0            --typecode=3:8302 --change-name=3:"HOME" "${DISK}"
+    partprobe "${DISK}"
+    sleep 2
+
+    log_info "Formatting filesystems..."
+    mkfs.fat -F 32 -n "EFI" "${BOOT_PART}"
+    mkfs.ext4 -F -L "ROOT" "${ROOT_PART}"
+    mkfs.ext4 -F -L "HOME" "${HOME_PART}"
+
+# ==============================================================================
+# --- MODE 2: SHARED DISK DUAL-BOOT (TIER 3) ---
+# ==============================================================================
+elif [[ "$DEPLOY_MODE" == "2" ]]; then
+    echo ""
+    log_info "Current partition layout on ${BOLD}$DISK${RESET}:"
+    echo -e "${BOLD}----------------------------------------------------${RESET}"
+    lsblk -o NAME,SIZE,FSTYPE,LABEL,MOUNTPOINT "$DISK"
+    echo -e "${BOLD}----------------------------------------------------${RESET}"
+    
+    log_info "To preserve Windows (C: / R:), you must allocate your unallocated free space."
+    read -rp "Launch interactive partitioner (cfdisk) now to carve free space? [Y/n]: " RUN_CFDISK
+    RUN_CFDISK="${RUN_CFDISK:-Y}"
+    
+    if [[ "$RUN_CFDISK" =~ ^[Yy]$ ]]; then
+        cfdisk "$DISK"
+        log_info "Informing kernel of partition table updates..."
+        partprobe "$DISK"
+        sleep 2
+        echo ""
+        log_info "Updated partition layout:"
+        lsblk -o NAME,SIZE,FSTYPE,LABEL,MOUNTPOINT "$DISK"
+        echo -e "${BOLD}----------------------------------------------------${RESET}"
+    fi
+
+    log_info "Map your partitions carefully. Do NOT select Windows basic data partitions!"
+    while true; do
+        read -rp "Enter EXISTING Windows EFI partition (e.g., /dev/nvme0n1p1): " BOOT_PART
+        read -rp "Enter target ROOT partition (e.g., /dev/nvme0n1p4): " ROOT_PART
+        read -rp "Enter target HOME partition (e.g., /dev/nvme0n1p5): " HOME_PART
+        
+        if [[ ! -b "$BOOT_PART" || ! -b "$ROOT_PART" || ! -b "$HOME_PART" ]]; then
+            log_error "One or more partition paths are invalid block devices. Try again."
+            continue
+        fi
+        
+        if [[ "$BOOT_PART" == "$ROOT_PART" || "$ROOT_PART" == "$HOME_PART" || "$BOOT_PART" == "$HOME_PART" ]]; then
+            log_error "Partition paths cannot be identical! Try again."
+            continue
+        fi
+        break
+    done
+
+    echo ""
+    log_warn "TIER 3 SAFETY VERIFICATION:"
+    log_warn " -> ROOT (${BOLD}$ROOT_PART${RESET}) and HOME (${BOLD}$HOME_PART${RESET}) will be FORMATTED as ext4."
+    log_warn " -> EFI  (${BOLD}$BOOT_PART${RESET}) will NOT be formatted to protect Windows bootloaders."
+    echo ""
+    read -rp "Type 'INSTALL' in all caps to authorize formatting of Linux partitions: " CONFIRM
+
+    if [[ "$CONFIRM" != "INSTALL" ]]; then
+        log_info "Authorization failed. Aborting installation."
+        exit 0
+    fi
+
+    echo ""
+    log_info "Cleaning up any previous active mounts..."
+    umount -q -R /mnt 2>/dev/null || true
+    swapoff -a 2>/dev/null || true
+
+    log_info "Formatting Linux filesystems (Skipping EFI format)..."
+    # STRICTLY NO mkfs.fat ON BOOT_PART HERE!
+    mkfs.ext4 -F -L "ROOT" "${ROOT_PART}"
+    mkfs.ext4 -F -L "HOME" "${HOME_PART}"
+else
+    log_error "Invalid mode selected. Aborting."
+    exit 1
+fi
+
+# ==============================================================================
+# --- MOUNTING TARGET DIRECTORIES (COMMON TO BOTH MODES) ---
+# ==============================================================================
+log_info "Mounting filesystems to /mnt..."
+mount "${ROOT_PART}" /mnt
+
+mkdir -p /mnt/boot
+mount "${BOOT_PART}" /mnt/boot
+
+mkdir -p /mnt/home
+mount "${HOME_PART}" /mnt/home
+
+echo ""
+log_success "Disk structure successfully partitioned, formatted, and mounted!"
+echo -e "${BOLD}----------------------------------------------------${RESET}"
+lsblk -o NAME,SIZE,FSTYPE,LABEL,MOUNTPOINT "${DISK}"
+echo -e "${BOLD}----------------------------------------------------${RESET}"
+log_success "Ready for Phase 2: pacstrap bootstrap."
+
+# ==============================================================================
+# --- PHASE 2: BASE SYSTEM BOOTSTRAP ---
+# ==============================================================================
+
+# --- PACKAGE SELECTION ---
+# Define core mandatory packages required for a functional bootable system
+CORE_PKGS=(base base-devel "${KERNEL_PKG}" "${KERNEL_PKG}-headers" linux-lts linux-lts-headers linux-firmware intel-ucode)
+
+# Define mandatory system utilities (including bootloader packages)
+SYS_PKGS=(networkmanager iwd zram-generator neovim git sudo curl wget man-db grub efibootmgr)
+
+# Check if packages.txt exists and append its contents to our install list
+EXTRA_PKGS=()
+if [[ -f "${REPO_DIR}/packages.txt" ]]; then
+    log_info "Found packages.txt. Parsing additional software payload..."
+    # Read non-empty, non-comment lines into an array
+    mapfile -t EXTRA_PKGS < <(grep -E -v '^\s*#|^\s*$' "${REPO_DIR}/packages.txt")
+else
+    log_warn "packages.txt not found. Installing core system packages only."
+fi
+
+# Combine all package arrays into a single master payload
+TOTAL_PKGS=("${CORE_PKGS[@]}" "${SYS_PKGS[@]}" "${EXTRA_PKGS[@]}")
+
+log_info "Initiating pacstrap deployment to /mnt..."
+log_info "Payload size: ${#TOTAL_PKGS[@]} unique packages/groups."
+echo -e "${BOLD}----------------------------------------------------${RESET}"
+
+# Execute pacstrap into /mnt
+pacstrap -K /mnt "${TOTAL_PKGS[@]}"
+
+echo -e "${BOLD}----------------------------------------------------${RESET}"
+log_success "Base system packages successfully installed!"
+
+# --- GENERATE FSTAB ---
+log_info "Generating filesystem table (fstab)..."
+genfstab -U /mnt >> /mnt/etc/fstab
+
+# Verify fstab generation
+if [[ -s /mnt/etc/fstab ]]; then
+    log_success "fstab successfully generated. Verifying contents:"
+    echo -e "${BOLD}----------------------------------------------------${RESET}"
+    cat /mnt/etc/fstab
+    echo -e "${BOLD}----------------------------------------------------${RESET}"
+else
+    log_error "fstab generation failed or file is empty!"
+    exit 1
+fi
+
+log_success "Phase 2 complete! Ready to enter Phase 3: Chroot Configuration."
+
+# ==============================================================================
+# --- PHASE 3: CHROOT SYSTEM CONFIGURATION ---
+# ==============================================================================
+
+log_info "Entering arch-chroot to configure system internals..."
+echo -e "${BOLD}----------------------------------------------------${RESET}"
+
+arch-chroot /mnt /bin/bash -e <<EOF
+
+# 1. TIMEZONE & CLOCK
+echo "Setting timezone to ${TIMEZONE}..."
+ln -sf /usr/share/zoneinfo/${TIMEZONE} /etc/localtime
+hwclock --systohc
+
+# 2. LOCALIZATION
+echo "Configuring locale (${LOCALE})..."
+sed -i "s/^#\(${LOCALE}\)/\1/" /etc/locale.gen
+locale-gen
+echo "LANG=${LOCALE}" > /etc/locale.conf
+echo "KEYMAP=${KEYBOARD_LAYOUT}" > /etc/vconsole.conf
+
+# 3. NETWORK CONFIGURATION 
+echo "Setting hostname to ${HOSTNAME}..."
+echo "${HOSTNAME}" > /etc/hostname
+cat <<HOSTS > /etc/hosts
+127.0.0.1   localhost
+::1         localhost
+127.0.1.1   ${HOSTNAME}.localdomain ${HOSTNAME}
+HOSTS
+
+echo "Configuring NetworkManager to use iwd backend..."
+mkdir -p /etc/NetworkManager/conf.d
+cat <<NMWIFI > /etc/NetworkManager/conf.d/wifi_backend.conf
+[device]
+wifi.backend=iwd
+NMWIFI
+
+# Enable system daemons for first boot
+systemctl enable NetworkManager
+systemctl enable iwd
+systemctl enable sshd
+
+# 4. SUDO PRIVILEGES
+echo "Enabling sudo access for wheel group..."
+sed -i 's/^# \%wheel ALL=(ALL:ALL) ALL/\%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
+
+# 5. PACMAN CONFIGURATION 
+echo "Configuring pacman turbo speeds and eye candy..."
+sed -i 's/^#ParallelDownloads/ParallelDownloads/; s/^#Color/Color/' /etc/pacman.conf
+sed -i '/^Color/a ILoveCandy' /etc/pacman.conf
+
+# 6. ZRAM COMPRESSED MEMORY SETUP
+echo "Configuring zram-generator for compressed RAM swap..."
+cat <<ZRAM > /etc/systemd/zram-generator.conf
+[zram0]
+zram-size = min(ram, 8192)
+compression-algorithm = zstd
+ZRAM
+
+# 7. BOOTLOADER CONFIGURATION (GRUB UEFI)
+echo "Installing and configuring GRUB bootloader..."
+grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB
+grub-mkconfig -o /boot/grub/grub.cfg
+
+EOF
+
+log_info "Configuring root password..."
+arch-chroot /mnt passwd root
+
+log_info "Creating user: ${TARGET_USER}..."
+arch-chroot /mnt useradd -m -G wheel -s /bin/bash "${TARGET_USER}"
+log_info "Enter password for ${TARGET_USER}:"
+arch-chroot /mnt passwd "${TARGET_USER}"
+
+log_info "Initializing default home directories..."
+arch-chroot /mnt su - "${TARGET_USER}" -c "xdg-user-dirs-update" || true
+
+echo -e "${BOLD}----------------------------------------------------${RESET}"
+log_success "Chroot configuration complete!"
+
+# ==============================================================================
+# --- PHASE 4: POST INSTALLATION CLEANUP ---
+# ==============================================================================
+log_info "Unmounting partitions..."
+umount -R /mnt
+
+echo ""
+log_success "===================================================="
+log_success " ARCH-LINUX INSTALLATION FINISHED SUCCESSFULLY!     "
+log_success "===================================================="
+log_info "You may now remove the installation USB and type: reboot"

@@ -1,13 +1,21 @@
+# --- Base Development & Microcode ---
 base-devel
-linux-headers
-linux-lts
-linux-lts-headers
+intel-ucode
 
+# --- Networking & Mirror Management ---
 networkmanager
 openssh
 wget
 curl
+reflector
+pacman-contrib
 
+# --- Filesystem Support (FAT32 / NTFS / USB) ---
+dosfstools
+mtools
+ntfs-3g
+
+# --- CLI Core & Developer Tools ---
 neovim
 git
 tmux
@@ -15,12 +23,4 @@ htop
 fzf
 ripgrep
 sudo
-
-reflector
-pacman-contrib
 xdg-user-dirs
-dosfstools
-mtools
-ntfs-3g
-
-intel-ucode
