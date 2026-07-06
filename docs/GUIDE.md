@@ -13,7 +13,7 @@ Access your motherboard's UEFI/BIOS settings during boot and enforce the followi
 - **SATA / Storage Controller Mode: AHCI**
   If your storage controller is set to Intel RST (RAID/Optane) or IDE mode, the Linux kernel will fail to detect your NVMe or SATA SSDs. The controller must be explicitly set to **AHCI** or standard NVMe mode.
 - **Boot Mode: 64-bit UEFI ONLY**
-  Disable CSM (Compatibility Support Module) and Legacy BIOS modes. This deployment strictly requires a GPT partition table and an EFI System Partition (ESP).
+  Disable CSM (Compatibility Support Module) and Legacy BIOS modes. This installation strictly requires a GPT partition table and an EFI System Partition (ESP).
 
 ## 2. Host OS Preparation (Windows Dual-Boot & Hibernation)
 
@@ -43,13 +43,13 @@ When executing the script or partitioning manually, adhere to these concrete sto
 | **`HOME`** (`/home`) | **`REMAINING`**    | `ext4`     | Absorbs 100% of remaining disk space for project repositories, dotfiles, and data.                                                  |
 | **`SWAP`**           | **`0G`** (On Disk) | `ZRAM`     | **Zero physical disk swap.** Memory overflow handled via `zstd`-compressed `zram-generator`.                                        |
 
-## 4. Deployment Tiers
+## 4. Installation Tiers
 
 ### Tier 1: Dedicated Bare-Metal Disk (Recommended / Safest)
 
 The entire physical machine or target SSD is dedicated exclusively to Arch Linux.
 
-- **Execution:** Select **Mode 1 (Whole-Disk Wipe)** in the deployment engine.
+- **Execution:** Select **Mode 1 (Whole-Disk Wipe)** in the installer.
 
 ### Tier 2: Separate Physical Disk Dual-Boot (Recommended for Multi-OS)
 
@@ -69,7 +69,7 @@ A single physical SSD contains existing operating systems (e.g., Windows `C:`) t
 
 ## 5. Navigating cfdisk
 
-Use `Mode 2` (Shared Dual-Boot) mode for Tier 3 deployments.
+Use `Mode 2` (Shared Dual-Boot) mode for Tier 3 installation.
 
 ### 5.1 Visual Partitioning
 
@@ -95,4 +95,4 @@ After exiting, input your partition identifiers when prompted:
 - **Existing Windows EFI:** Path to the Microsoft EFI partition (e.g., `/dev/nvme0n1p1`). (Script mounts this to `/mnt/boot` **without formatting**).
 - **Target ROOT:** Path to your new root (e.g., `/dev/nvme0n1p4`).
 - **Target HOME:** Path to your new home (e.g., `/dev/nvme0n1p5`).
-- **Authorize:** Type `INSTALL` to trigger the final deployment.
+- **Authorize:** Type `INSTALL` to trigger the final installation.

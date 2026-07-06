@@ -1,5 +1,5 @@
 #!/bin/bash
-# source: https://github.com/riteshraj-shetage/brut-arch.git
+# source: https://raw.githubusercontent.com/riteshraj-shetage/brut-arch/main/install.sh
 
 set -euo pipefail
 
@@ -87,19 +87,21 @@ while true; do
     break
 done
 
-# --- DEPLOYMENT MODE SWITCH ---
+# --- INSTALLER MODE SWITCH ---
 echo ""
-log_info "Select Deployment Mode for ${BOLD}$DISK${RESET}:"
+log_info "Select Install Mode for ${BOLD}$DISK${RESET}:"
 echo -e "  ${BOLD}[1] Whole-Disk Wipe${RESET}  (Tier 1/2: Destroys all data, automated GPT layout)"
 echo -e "  ${BOLD}[2] Shared Dual-Boot${RESET} (Tier 3: Preserves existing Windows/data, uses unallocated space)"
 echo -e "${BOLD}----------------------------------------------------${RESET}"
-read -rp "Enter mode [1 or 2, default: 1]: " DEPLOY_MODE
-DEPLOY_MODE="${DEPLOY_MODE:-1}"
+read -rp "Enter mode [1 or 2, default: 1]: " INSTALL_MODE
+INSTALL_MODE="${INSTALL_MODE:-1}"
 
+# Initialize default state
+ENABLE_OS_PROBER="false"
 # ==============================================================================
 # --- MODE 1: WHOLE-DISK AUTOMATED WIPE (TIER 1 & 2) ---
 # ==============================================================================
-if [[ "$DEPLOY_MODE" == "1" ]]; do
+if [[ "$INSTALL_MODE" == "1" ]]; then
     # Get total disk capacity in GB
     DISK_SIZE_BYTES=$(lsblk -b -d -n -o SIZE "$DISK")
     DISK_SIZE_GB=$(( DISK_SIZE_BYTES / 1024 / 1024 / 1024 ))
@@ -152,7 +154,7 @@ if [[ "$DEPLOY_MODE" == "1" ]]; do
     fi
 
     echo ""
-    log_info "Starting automated deployment..."
+    log_info "Starting installation..."
     log_info "Cleaning up any previous active mounts..."
     umount -q -R /mnt 2>/dev/null || true
     swapoff -a 2>/dev/null || true
@@ -175,14 +177,15 @@ if [[ "$DEPLOY_MODE" == "1" ]]; do
 # ==============================================================================
 # --- MODE 2: SHARED DISK DUAL-BOOT (TIER 3) ---
 # ==============================================================================
-elif [[ "$DEPLOY_MODE" == "2" ]]; then
+elif [[ "$INSTALL_MODE" == "2" ]]; then
+    ENABLE_OS_PROBER="true"
     echo ""
     log_info "Current partition layout on ${BOLD}$DISK${RESET}:"
     echo -e "${BOLD}----------------------------------------------------${RESET}"
     lsblk -o NAME,SIZE,FSTYPE,LABEL,MOUNTPOINT "$DISK"
     echo -e "${BOLD}----------------------------------------------------${RESET}"
     
-    log_info "To preserve Windows (C: / R:), you must allocate your unallocated free space."
+    log_info "To preserve Windows (C: / D:), you must allocate your unallocated free space."
     read -rp "Launch interactive partitioner (cfdisk) now to carve free space? [Y/n]: " RUN_CFDISK
     RUN_CFDISK="${RUN_CFDISK:-Y}"
     
@@ -265,26 +268,54 @@ log_success "Ready for Phase 2: pacstrap bootstrap."
 # ==============================================================================
 
 # --- PACKAGE SELECTION ---
-# Define core mandatory packages required for a functional bootable system
-CORE_PKGS=(base base-devel "${KERNEL_PKG}" "${KERNEL_PKG}-headers" linux-lts linux-lts-headers linux-firmware intel-ucode)
+CORE_PKGS=(base base-devel "${KERNEL_PKG}" "${KERNEL_PKG}-headers"  linux-firmware intel-ucode)
+SYS_PKGS=(networkmanager iwd zram-generator nano git sudo curl wget man-db grub efibootmgr)
+PKGS_URL="${PKGS_URL:-}"
 
-# Define mandatory system utilities (including bootloader packages)
-SYS_PKGS=(networkmanager iwd zram-generator neovim git sudo curl wget man-db grub efibootmgr)
-
-# Check if packages.txt exists and append its contents to our install list
 EXTRA_PKGS=()
-if [[ -f "${REPO_DIR}/packages.txt" ]]; then
-    log_info "Found packages.txt. Parsing additional software payload..."
-    # Read non-empty, non-comment lines into an array
-    mapfile -t EXTRA_PKGS < <(grep -E -v '^\s*#|^\s*$' "${REPO_DIR}/packages.txt")
+
+# 1. If PKGS_URL is not set, prompt the user
+if [[ -z "${PKGS_URL}" ]]; then
+    echo ""
+    read -r -p ":: Enter URL for custom packages.txt (press Enter to skip/use default): " PKGS_URL
+fi
+
+# 2. Check if the user passed a remote URL via PKGS_URL
+if [[ -n "${PKGS_URL}" ]]; then
+    log_info "Remote package URL detected. Fetching payload from ${PKGS_URL}..."
+    if curl -fSsL "${PKGS_URL}" -o /tmp/remote_packages.txt; then
+        mapfile -t EXTRA_PKGS < <(sed -e 's/#.*//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' /tmp/remote_packages.txt | grep -E '^[a-z0-9@._+][a-z0-9@._+-]*$')
+    else
+        log_warn "Failed to fetch remote package list. Proceeding without remote packages."
+    fi
+# 3. Fall back to local packages.txt if present
+elif [[ -f "${REPO_DIR}/packages.txt" ]]; then
+    mapfile -t EXTRA_PKGS < <(sed -e 's/#.*//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' "${REPO_DIR}/packages.txt" | grep -E '^[a-z0-9@._+][a-z0-9@._+-]*$')
+    if (( ${#EXTRA_PKGS[@]} > 0 )); then
+        log_info "Found local packages.txt (${#EXTRA_PKGS[@]} packages queued)."
+        read -r -p ":: Install packages from local packages.txt? [Y/n]: " CONFIRM_PKGS
+        if [[ "$CONFIRM_PKGS" =~ ^[Nn]$ ]]; then
+            log_info "Skipping local package manifest."
+            EXTRA_PKGS=()
+        fi
+    fi
 else
-    log_warn "packages.txt not found. Installing core system packages only."
+    log_warn "No package manifest found."
+fi
+
+# 4. Prompt for inline manual package additions
+read -r -p ":: Enter additional packages to install (space-separated, press Enter to skip): " MANUAL_INPUT
+if [[ -n "${MANUAL_INPUT}" ]]; then
+    # Convert space-separated string into an array and append to EXTRA_PKGS
+    read -ra MANUAL_PKGS <<< "${MANUAL_INPUT}"
+    EXTRA_PKGS+=("${MANUAL_PKGS[@]}")
+    log_info "Added ${#MANUAL_PKGS[@]} manual package(s)."
 fi
 
 # Combine all package arrays into a single master payload
 TOTAL_PKGS=("${CORE_PKGS[@]}" "${SYS_PKGS[@]}" "${EXTRA_PKGS[@]}")
 
-log_info "Initiating pacstrap deployment to /mnt..."
+log_info "Initiating pacstrap installation to /mnt..."
 log_info "Payload size: ${#TOTAL_PKGS[@]} unique packages/groups."
 echo -e "${BOLD}----------------------------------------------------${RESET}"
 
@@ -373,6 +404,18 @@ ZRAM
 # 7. BOOTLOADER CONFIGURATION (GRUB UEFI)
 echo "Installing and configuring GRUB bootloader..."
 grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB
+
+# --- DUAL-BOOT DETECTION SETUP ---
+if [[ "${ENABLE_OS_PROBER:-false}" == "true" ]]; then
+    echo "Dual-boot mode detected. Enabling os-prober..."
+    if grep -q "^#GRUB_DISABLE_OS_PROBER=false" /etc/default/grub; then
+        sed -i 's/^#GRUB_DISABLE_OS_PROBER=false/GRUB_DISABLE_OS_PROBER=false/' /etc/default/grub
+    else
+        echo "GRUB_DISABLE_OS_PROBER=false" >> /etc/default/grub
+    fi
+fi
+
+echo "Generating GRUB configuration..."
 grub-mkconfig -o /boot/grub/grub.cfg
 
 EOF

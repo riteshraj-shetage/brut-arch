@@ -1,8 +1,8 @@
 # 1. Install Arch Linux
 
-Install Arch Linux by booting into the interactive live environment and executing the deployment script.
+Install Arch Linux by booting into the interactive live environment and executing the installer script.
 
-## 1.1 Plug in Installer
+## 1.1 Boot into Arch Live
 
 - **Insert Installation Medium:** Plug the installation medium into the target machine and power on (or restart).
 - **Select UEFI Boot Device:** Trigger your motherboard's boot menu repeatedly during startup and select the entry explicitly prefixed with **`UEFI:`** or **`EFI`** (e.g., `UEFI: SanDisk Extreme` or `Ventoy (UEFI)`).
@@ -19,7 +19,7 @@ To verify that the system has booted in UEFI mode, check the UEFI bitness:
 cat /sys/firmware/efi/fw_platform_size
 ```
 
-If the command returns `64`, the system is booted in 64-bit UEFI mode. If the file does not exist or returns an error, the system has booted in BIOS/CSM mode. **This deployment strictly requires 64-bit UEFI mode.**
+If the command returns `64`, the system is booted in 64-bit UEFI mode. If the file does not exist or returns an error, the system has booted in BIOS/CSM mode. **This installation strictly requires 64-bit UEFI mode.**
 
 ## 1.3 Set the console keyboard layout and font
 
@@ -39,7 +39,7 @@ setfont ter-v22b
 
 # 2. Network & System Clock
 
-An active Internet connection is mandatory for fetching official mirrors, synchronizing cryptographic keyrings, and cloning the deployment repository.
+An active Internet connection is mandatory for fetching official mirrors, synchronizing cryptographic keyrings, and cloning the installer repository.
 
 ## 2.1 Connect to the Internet
 
@@ -81,22 +81,18 @@ List available wireless networks detected by the scan:
 [iwd]# station wlan0 get-networks
 ```
 
-Connect to the target network (replace `SSID_NAME` with the exact target network name):
-
-```text
-[iwd]# station wlan0 connect SSID_NAME
-```
-
-If the network is secured, `iwd` will prompt for the passphrase:
-
-```text
-Type the network passphrase for SSID_NAME: [enter passphrase here]
-```
+Identify the target network name (`SSID`).
 
 Exit the interactive daemon:
 
 ```text
 [iwd]# exit
+```
+
+Connect to the target network (replace `SSID_NAME` and `YOUR_PASSWORD` with your wireless credentials):
+
+```bash
+iwctl --passphrase="YOUR_PASSWORD" station wlan0 connect SSID_NAME
 ```
 
 ## 2.2 Verify network connectivity
@@ -123,47 +119,35 @@ timedatectl status
 
 ---
 
-# 3. Deployment Script
+# 3. Installer Script
 
-Once the live environment is verified, connected, and synchronized, manual pre-flight is complete. Hand over control to the `brut-arch` interactive deployment.
+Once the live environment is verified, connected, and synchronized, manual step is complete. Hand over control to the `brut-arch` interactive installer.
 
-## 3.1 Install git
+> **CRITICAL WARNING:** The script (install.sh) performs destructive, low-level disk formatting. Back up all critical personal data from your target machine to an external physical drive or cloud storage before running the installer script.
 
-Synchronize the package database and install `git` into the ephemeral live RAM environment:
+## 3.1 Run the Installer
+
+Install `git`, clone the repository, and run the script:
 
 ```bash
+# 1. Install git
 pacman -Sy --noconfirm git
+
+# 2. Clone the repo
+git clone https://github.com/riteshraj-shetage/brut-arch.git
+
+# 3. Make executable and run
+cd brut-arch && chmod +x install.sh && ./install.sh
 ```
 
-Verify git installation:
+## 3.2 One-Line Install (Alternative)
+
+If you prefer to run the installer directly over the network without cloning the repository manually, execute:
 
 ```bash
-git --version
+# curl -fSsL https://raw.githubusercontent.com/riteshraj-shetage/brut-arch/main/install.sh | bash
 ```
 
-## 3.2 Clone the deployment repository
+**Additional Custom Software:** - When prompted, pass a raw URL to your remote `packages.txt` or input space-separated package names manually (e.g., `wget tmux neovim`) to queue them for installation.
 
-Retrieve the automated installer script from the remote repository:
-
-```bash
-git clone [https://github.com/riteshraj-shetage/brut-arch.git](https://github.com/riteshraj-shetage/brut-arch.git)
-```
-
-## 3.3 Execute the interactive script
-
-> **CRITICAL WARNING:** The script (install.sh) performs destructive, low-level disk formatting. Back up all critical personal data to an external physical drive or cloud storage before running the deployment engine.
-
-Navigate to the working directory, assign execution permissions to the script.
-
-```bash
-cd brut-arch
-chmod +x install.sh
-```
-
-Launch the interactive deployment sequence:
-
-_Note: From this point onward, `./install.sh` takes complete control over the system deployment. Please refer to operational [GUIDE](GUIDE.md) before proceeding._
-
-```bash
-./install.sh
-```
+_Note: From this point onward, the [installer](../install.sh) takes complete control over the system installation. Please refer to operational [GUIDE](GUIDE.md) for any help._

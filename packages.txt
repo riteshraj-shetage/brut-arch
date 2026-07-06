@@ -1,26 +1,58 @@
-# --- Base Development & Microcode ---
-base-devel
-intel-ucode
-
 # --- Networking & Mirror Management ---
-networkmanager
 openssh
-wget
-curl
+iw
+wireless-regdb
 reflector
 pacman-contrib
 
-# --- Filesystem Support (FAT32 / NTFS / USB) ---
+# --- Filesystem & Device Support ---
 dosfstools
 mtools
 ntfs-3g
+exfatprogs
+unzip
+zip
 
-# --- CLI Core & Developer Tools ---
-neovim
-git
+# --- Diagnostic & Troubleshooting ---
+usbutils
+pciutils
+lsof
+
+# --- CLI Core & Navigation ---
 tmux
-htop
+btop
 fzf
 ripgrep
-sudo
+tree
+jq
 xdg-user-dirs
+fastfetch
+bash-completion
+man-pages
+
+# --- Developer Stack ---
+neovim
+python
+python-pip
+
+# --- Hardware, Bluetooth & Audio Stack ---
+bluez
+bluez-utils
+pipewire
+pipewire-pulse
+pipewire-alsa
+wireplumber
+
+# --- Dual-Boot Core ---
+os-prober
+
+# --- Laptop HW & Firmware ---
+acpid
+power-profiles-daemon
+sof-firmware
+
+# --- Intel Graphics & Hardware Acceleration ---
+mesa
+vulkan-intel
+intel-media-driver
+libva-utils

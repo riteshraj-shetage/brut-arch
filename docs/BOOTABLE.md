@@ -42,7 +42,7 @@ sha256sum -c sha256sums.txt --ignore-missing
 
 To boot the Arch Linux installer, the ISO image must be written to a USB flash drive. Choose one of the following methods based on your host operating system and risk tolerance.
 
-### Option A: Ventoy (Recommended / Safest Multi-Boot)
+### Option A: Ventoy (Recommended / Best for Multi-Boot)
 
 Ventoy creates a bootable USB drive that allows you to simply copy-paste ISO files without repeatedly re-flashing or destroying existing data on the drive.
 
@@ -50,7 +50,7 @@ Ventoy creates a bootable USB drive that allows you to simply copy-paste ISO fil
 2. Run Ventoy2Disk.exe, select your target USB flash drive, and click Install (this wipes the drive).
 3. Open your standard file manager and locate the newly created `Ventoy` partition on the USB drive.
 4. Drag and drop the verified `archlinux-version-x86_64.iso` file directly onto this partition.
-5. Safely eject the drive. When booting from the USB, the Ventoy menu will present the Arch Linux ISO for selection.
+5. Safely eject the drive. When booting from the USB, the Ventoy menu will present the Arch Linux ISO for selection. _(Note: Secure your safety goggles—the default Ventoy menu emits enough lumens to flashbang you at 2 AM)._
 
 ### Option B: Rufus (Recommended for Windows Hosts)
 
@@ -59,7 +59,7 @@ Rufus is a reliable, standalone utility for creating bootable USB drives from a 
 1. Download Rufus from [https://rufus.ie](https://rufus.ie) and insert your target USB drive.
 2. Open the Rufus executable and select your USB flash drive under the **Device** dropdown.
 3. Click **SELECT** and locate your verified `archlinux-version-x86_64.iso`.
-4. Set partition scheme to `GPT` for modern UEFI systems.
+4. Set partition scheme to `GPT` for modern `UEFI` systems.
 5. Leave the rest of the format options (File system: FAT32) as default and click **START**.
 6. **CRITICAL STEP:** When prompted with the ISOHybrid image detection warning, select **Write in DD Image mode**. (Using the default ISO Image mode might result in an unbootable installation medium for Arch).
 7. Confirm the warning prompt to begin writing and wait for the status to say `Ready`.
@@ -92,6 +92,7 @@ Verify and enforce the following baseline hardware and operating system states b
 
 ## Firmware & Hardware
 
+- **USB Boot:** `ENABLED`
 - **Secure Boot:** `DISABLED`
 - **SATA / Storage Controller Mode:** `AHCI` / `NVMe`
 - **Boot Mode:** `64-bit UEFI ONLY`
