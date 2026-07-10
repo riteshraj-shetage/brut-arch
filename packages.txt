@@ -1,3 +1,8 @@
+# --- Core, System Packages (included in installer already) ---
+# base base-devel linux linux-headers linux-firmware intel-ucode
+# networkmanager iwd zram-generator nano git sudo curl wget man-db grub efibootmgr
+
+
 # --- Networking & Mirror Management ---
 openssh
 iw
