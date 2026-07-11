@@ -42,6 +42,12 @@ if [[ ! -d "/sys/firmware/efi/efivars" ]]; then
     exit 1
 fi
 
+if [[ -f "${BASH_SOURCE[0]:-}" ]]; then
+    REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+else
+    REPO_DIR="$PWD"
+fi
+
 clear
 echo -e "${BOLD}====================================================${RESET}"
 echo -e "${BOLD}             ARCH LINUX INSTALLATION                ${RESET}"
@@ -56,7 +62,6 @@ read -rp "Enter Target Username [default: arch]: " INPUT_USER
 TARGET_USER="${INPUT_USER:-arch}"
 
 # --- SYSTEM CONFIGS (Defaults) ---
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 KERNEL_PKG="linux"       
 TIMEZONE="Asia/Kolkata"       
 LOCALE="en_US.UTF-8"          
