@@ -1,12 +1,12 @@
-# 1. Arch Linux Installer
+# Arch Linux Install Medium
 
 Get the official Arch Linux ISO image and write it to your physical installation medium.
 
-## 1.1 Acquire an ISO image
+## Acquire an ISO image
 
 Visit [https://archlinux.org/download](https://archlinux.org/download) to acquire the official ISO image (`archlinux-version-x86_64.iso`) and its corresponding PGP signature (`.sig`).
 
-## 1.2 Verify signature
+## Verify signature
 
 It is strongly recommended to verify the cryptographic signature of the image before use to ensure integrity and authenticity, especially when downloading from HTTP mirrors where traffic is prone to interception.
 
@@ -38,7 +38,7 @@ To verify that the ISO was not corrupted during transmission, validate its crypt
 sha256sum -c sha256sums.txt --ignore-missing
 ```
 
-## 1.3 Prepare installation medium
+## Prepare installation medium
 
 To boot the Arch Linux installer, the ISO image must be written to a USB flash drive. Choose one of the following methods based on your host operating system and risk tolerance.
 
@@ -86,7 +86,7 @@ Once the target device path is verified with 100% certainty, execute the direct 
 
 The bootable installation medium (`Arch Installer`) is now ready.
 
-# 2. Prepare Target Machine
+# Prepare Target Machine
 
 Verify and enforce the following baseline hardware and operating system states before proceeding.
 
