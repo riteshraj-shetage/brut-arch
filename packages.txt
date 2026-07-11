@@ -1,13 +1,11 @@
 # --- Core, System Packages (included in installer already) ---
 # base base-devel linux linux-headers linux-firmware intel-ucode
-# networkmanager iwd zram-generator nano git sudo curl wget man-db grub efibootmgr
+# networkmanager iwd zram-generator grub efibootmgr nano git sudo curl wget openssh reflector man-db xdg-user-dirs
 
 
 # --- Networking & Mirror Management ---
-openssh
 iw
 wireless-regdb
-reflector
 pacman-contrib
 
 # --- Filesystem & Device Support ---
@@ -30,7 +28,6 @@ fzf
 ripgrep
 tree
 jq
-xdg-user-dirs
 fastfetch
 bash-completion
 man-pages
@@ -39,9 +36,10 @@ man-pages
 neovim
 python
 python-pip
+python-pipx
 
 # --- Hardware, Bluetooth & Audio Stack ---
-bluez
+bluez @bluetooth
 bluez-utils
 pipewire
 pipewire-pulse
@@ -52,8 +50,8 @@ wireplumber
 os-prober
 
 # --- Laptop HW & Firmware ---
-acpid
-power-profiles-daemon
+acpid @acpid
+power-profiles-daemon @power-profiles-daemon
 sof-firmware
 
 # --- Intel Graphics & Hardware Acceleration ---
