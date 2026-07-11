@@ -120,7 +120,7 @@ cd brut-arch && chmod +x install.sh && ./install.sh
 If you prefer to run the installer directly over the network without cloning the repository manually, execute:
 
 ```bash
-# curl -fSsL https://raw.githubusercontent.com/riteshraj-shetage/brut-arch/main/install.sh | bash
+# curl -fSsL https://raw.githubusercontent.com/riteshraj-shetage/brut-arch/main/install.sh -o install.sh && chmod +x install.sh && ./install.sh
 ```
 
 **Additional Custom Software:** - When prompted, pass a raw URL to your remote `packages.txt` or input space-separated package names manually (e.g., `wget tmux neovim`) to queue them for installation.
