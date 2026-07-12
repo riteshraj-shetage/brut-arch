@@ -420,17 +420,6 @@ cat <<NMWIFI > /etc/NetworkManager/conf.d/wifi_backend.conf
 wifi.backend=iwd
 NMWIFI
 
-echo "Enabling system daemons..."
-for svc in "${SYS_SERVICES[@]}" "${TARGET_SERVICES[@]:-}"; do
-    [[ "$svc" != *.* ]] && svc="$svc.service"
-    if systemctl list-unit-files "$svc" &>/dev/null; then
-        systemctl enable "$svc" 2>/dev/null || true
-        echo "  -> Enabled $svc"
-    else
-        echo "[!] Warning: Unit '$svc' not found; skipping."
-    fi
-done
-
 # 4. SUDO PRIVILEGES
 echo "Enabling sudo access for wheel group..."
 sed -i 's/^# \%wheel ALL=(ALL:ALL) ALL/\%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
@@ -465,6 +454,19 @@ echo "Generating GRUB configuration..."
 grub-mkconfig -o /boot/grub/grub.cfg
 
 EOF
+
+echo "Enabling system daemons..."
+for svc in "${SYS_SERVICES[@]}" "${TARGET_SERVICES[@]:-}"; do
+    [[ -z "$svc" ]] && continue
+    [[ "$svc" != *.* ]] && svc="$svc.service"
+    if systemctl --root=/mnt list-unit-files "$svc" &>/dev/null; then
+        systemctl --root=/mnt enable "$svc" &>/dev/null
+        echo " -> Enabled $svc"
+    else
+        echo "[!] Warning: Unit '$svc' not found or invalid; skipping."
+    fi
+done
+
 
 log_info "Configuring root password..."
 arch-chroot /mnt passwd root
