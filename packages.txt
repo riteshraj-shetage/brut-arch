@@ -1,27 +1,12 @@
-# --- Core, System Packages (included in installer already) ---
+# --- Installed by default ---
 # base base-devel linux linux-headers linux-firmware intel-ucode
-# networkmanager iwd zram-generator grub efibootmgr nano git sudo curl wget openssh reflector man-db xdg-user-dirs
+# networkmanager iwd zram-generator grub efibootmgr dosfstools lsof usbutils pciutils pacman-contrib acpid power-profiles-daemon nano git sudo curl wget openssh reflector man-db
 
-
-# --- Networking & Mirror Management ---
-iw
-wireless-regdb
-pacman-contrib
-
-# --- Filesystem & Device Support ---
-dosfstools
-mtools
+# --- To be installed... ---
 ntfs-3g
 exfatprogs
 unzip
 zip
-
-# --- Diagnostic & Troubleshooting ---
-usbutils
-pciutils
-lsof
-
-# --- CLI Core & Navigation ---
 tmux
 btop
 fzf
@@ -31,31 +16,3 @@ jq
 fastfetch
 bash-completion
 man-pages
-
-# --- Developer Stack ---
-neovim
-python
-python-pip
-python-pipx
-
-# --- Hardware, Bluetooth & Audio Stack ---
-bluez @bluetooth
-bluez-utils
-pipewire
-pipewire-pulse
-pipewire-alsa
-wireplumber
-
-# --- Dual-Boot Core ---
-os-prober
-
-# --- Laptop HW & Firmware ---
-acpid @acpid
-power-profiles-daemon @power-profiles-daemon
-sof-firmware
-
-# --- Intel Graphics & Hardware Acceleration ---
-mesa
-vulkan-intel
-intel-media-driver
-libva-utils

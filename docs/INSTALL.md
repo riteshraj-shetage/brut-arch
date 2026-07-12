@@ -98,7 +98,7 @@ timedatectl status
 Once the live environment is verified, connected, and synchronized, manual step is complete. Hand over control to the `brut-arch` interactive installer.
 
 > [!CAUTION]  
-> The script (install.sh) performs destructive, low-level disk formatting. Back up all critical personal data from your target machine to an external physical drive or cloud storage before running the installer script.
+> The script _install.sh_ performs destructive, low-level disk formatting. Back up all critical personal data from your target machine to an external physical drive or cloud storage before running the installer script.
 
 ## Clone and Run
 
@@ -123,6 +123,6 @@ If you prefer to run the installer directly over the network without cloning the
 # curl -fSsL https://raw.githubusercontent.com/riteshraj-shetage/brut-arch/main/install.sh -o install.sh && chmod +x install.sh && ./install.sh
 ```
 
-**Additional Custom Software:** - When prompted, pass a raw URL to your remote `packages.txt` or input space-separated package names manually (e.g., `wget tmux neovim`) to queue them for installation.
+**Additional Custom Software:** When prompted, pass a raw URL to your remote `packages.txt` or input space-separated package names manually (e.g., `wget tmux neovim`) to queue them for installation.
 
 _Note: From this point onward, the [installer](../install.sh) takes complete control over the system installation. Please refer to operational [GUIDE](GUIDE.md) for any help._

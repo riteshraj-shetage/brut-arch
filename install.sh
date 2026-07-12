@@ -14,7 +14,15 @@ RESET="\033[0m"
 log_info()    { echo -e "${BLUE}[*]${RESET} ${BOLD}$1${RESET}"; }
 log_success() { echo -e "${GREEN}[+]${RESET} ${BOLD}$1${RESET}"; }
 log_warn()    { echo -e "${YELLOW}[!]${RESET} ${BOLD}$1${RESET}"; }
-log_error()   { echo -e "${RED}[×]${RESET} ${BOLD}$1${RESET}"; }
+log_error()   { echo -e "${RED}[x]${RESET} ${BOLD}$1${RESET}"; }
+
+# --- BANNER DISPLAY ---
+show_banner() {
+    clear
+    echo -e "${BOLD}====================================================${RESET}"
+    echo -e "${BOLD}             ARCH LINUX INSTALL SCRIPT              ${RESET}"
+    echo -e "${BOLD}====================================================${RESET}\n"
+}
 
 # --- RETRY HELPER ---
 retry() {
@@ -32,6 +40,11 @@ retry() {
 }
 
 # --- PRE-RUN SAFETY CHECKS ---
+if [[ ! -f /etc/arch-release ]]; then
+   log_error "This installer must be run from an Arch Linux environment."
+   exit 1
+fi
+
 if [[ $EUID -ne 0 ]]; then
    log_error "This script must be executed as root."
    exit 1
@@ -48,10 +61,7 @@ else
     REPO_DIR="$PWD"
 fi
 
-clear
-echo -e "${BOLD}====================================================${RESET}"
-echo -e "${BOLD}             ARCH LINUX INSTALLATION                ${RESET}"
-echo -e "${BOLD}====================================================${RESET}\n"
+show_banner
 
 # --- MANUAL CONFIGURATION ---
 log_info "Configure system identity:"
@@ -78,9 +88,8 @@ timedatectl set-ntp true
 log_info "Refreshing Arch Linux keyring to prevent PGP signature failures..."
 retry pacman -Sy --noconfirm archlinux-keyring
 
-log_info "Configuring pacman (ParallelDownloads + Color)..."
-sed -i 's/^#ParallelDownloads/ParallelDownloads/; s/^#Color/Color/' /etc/pacman.conf
-grep -q "ILoveCandy" /etc/pacman.conf || sed -i '/^Color/a ILoveCandy' /etc/pacman.conf
+log_info "Configuring pacman..."
+sed -i 's/^# *ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
 
 log_info "Verifying internet connectivity..."
 retry ping -c 1 -W 3 archlinux.org >/dev/null
@@ -134,9 +143,8 @@ if [[ "$SKIP_DISK_SETUP" == "false" ]]; then
     INSTALL_MODE="${INSTALL_MODE:-1}"
 
     ENABLE_OS_PROBER="false"
-    # ==============================================================================
+
     # --- MODE 1: WHOLE-DISK AUTOMATED WIPE ---
-    # ==============================================================================
     if [[ "$INSTALL_MODE" == "1" ]]; then
         DISK_SIZE_BYTES=$(lsblk -b -d -n -o SIZE "$DISK")
         DISK_SIZE_GB=$(( DISK_SIZE_BYTES / 1024 / 1024 / 1024 ))
@@ -213,9 +221,7 @@ if [[ "$SKIP_DISK_SETUP" == "false" ]]; then
         mkfs.ext4 -F -L "ROOT" "${ROOT_PART}"
         mkfs.ext4 -F -L "HOME" "${HOME_PART}"
 
-    # ==============================================================================
     # --- MODE 2: SHARED DISK DUAL-BOOT ---
-    # ==============================================================================
     elif [[ "$INSTALL_MODE" == "2" ]]; then
         ENABLE_OS_PROBER="true"
         echo ""
@@ -282,9 +288,7 @@ if [[ "$SKIP_DISK_SETUP" == "false" ]]; then
         exit 1
     fi
 
-    # ==============================================================================
     # --- MOUNTING TARGET DIRECTORIES ---
-    # ==============================================================================
     log_info "Mounting filesystems to /mnt..."
     mount "${ROOT_PART}" /mnt
 
@@ -302,16 +306,16 @@ lsblk -o NAME,SIZE,FSTYPE,LABEL,MOUNTPOINT "${DISK:-/dev/sda}" | grep -E "/mnt|N
 echo -e "${BOLD}----------------------------------------------------${RESET}"
 log_success "Ready for Phase 2: base system bootstrap."
 
-# ==============================================================================
 # --- PHASE 2: BASE SYSTEM BOOTSTRAP ---
-# ==============================================================================
 
 CORE_PKGS=(base base-devel "${KERNEL_PKG}" "${KERNEL_PKG}-headers" linux-firmware intel-ucode)
-SYS_PKGS=(networkmanager iwd zram-generator grub efibootmgr nano git sudo curl wget openssh reflector man-db xdg-user-dirs)
+SYS_PKGS=(networkmanager iwd zram-generator grub efibootmgr dosfstools lsof usbutils pciutils pacman-contrib acpid power-profiles-daemon nano git sudo curl wget openssh reflector man-db)
+SYS_SERVICES=(NetworkManager iwd sshd acpid power-profiles-daemon fstrim.timer paccache.timer)
+
 PKGS_URL="${PKGS_URL:-}"
 
 EXTRA_PKGS=()
-SERVICES=()
+TARGET_SERVICES=()
 
 if [[ -z "${PKGS_URL}" ]]; then
     echo ""
@@ -322,13 +326,13 @@ if [[ -n "${PKGS_URL}" ]]; then
     log_info "Remote package URL detected. Fetching payload from ${PKGS_URL}..."
     if retry curl -fSsL "${PKGS_URL}" -o /tmp/remote_packages.txt; then
         mapfile -t EXTRA_PKGS < <(sed -e 's/#.*//' -e 's/^[[:space:]]*//' -e 's/[[:space:]].*//' -e 's/[[:space:]]*$//' /tmp/remote_packages.txt | grep -E '^[a-z0-9._+][a-z0-9._+-]*$')
-        mapfile -t SERVICES < <(grep -oE '@[a-zA-Z0-9_-]+' /tmp/remote_packages.txt | tr -d '@')
+        mapfile -t TARGET_SERVICES < <(grep -oE '@[a-zA-Z0-9_-]+' /tmp/remote_packages.txt | tr -d '@')
     else
         log_warn "Failed to fetch remote package list. Proceeding without remote packages."
     fi
 elif [[ -f "${REPO_DIR}/packages.txt" ]]; then
     mapfile -t EXTRA_PKGS < <(sed -e 's/#.*//' -e 's/^[[:space:]]*//' -e 's/[[:space:]].*//' -e 's/[[:space:]]*$//' "${REPO_DIR}/packages.txt" | grep -E '^[a-z0-9._+][a-z0-9._+-]*$')
-    mapfile -t SERVICES < <(grep -oE '@[a-zA-Z0-9_-]+' "${REPO_DIR}/packages.txt" | tr -d '@')
+    mapfile -t TARGET_SERVICES < <(grep -oE '@[a-zA-Z0-9_-]+' "${REPO_DIR}/packages.txt" | tr -d '@')
 
     if (( ${#EXTRA_PKGS[@]} > 0 )); then
         log_info "Found local packages.txt (${#EXTRA_PKGS[@]} packages queued)."
@@ -336,7 +340,7 @@ elif [[ -f "${REPO_DIR}/packages.txt" ]]; then
         if [[ "$CONFIRM_PKGS" =~ ^[Nn]$ ]]; then
             log_info "Skipping local package manifest."
             EXTRA_PKGS=()
-            SERVICES=()
+            TARGET_SERVICES=()
         fi
     fi
 else
@@ -381,9 +385,7 @@ fi
 
 log_success "Phase 2 complete! Ready to enter Phase 3: Chroot Configuration."
 
-# ==============================================================================
 # --- PHASE 3: CHROOT SYSTEM CONFIGURATION ---
-# ==============================================================================
 
 log_info "Entering arch-chroot to configure system internals..."
 echo -e "${BOLD}----------------------------------------------------${RESET}"
@@ -419,11 +421,13 @@ wifi.backend=iwd
 NMWIFI
 
 echo "Enabling system daemons..."
-for svc in NetworkManager iwd sshd ${SERVICES[@]}; do
-    if systemctl list-unit-files "\${svc}.service" &>/dev/null; then
-        systemctl enable "\${svc}.service" 2>/dev/null || true
+for svc in "${SYS_SERVICES[@]}" "${TARGET_SERVICES[@]:-}"; do
+    [[ "$svc" != *.* ]] && svc="$svc.service"
+    if systemctl list-unit-files "$svc" &>/dev/null; then
+        systemctl enable "$svc" 2>/dev/null || true
+        echo "  -> Enabled $svc"
     else
-        echo "[!] Warning: Daemon '\${svc}.service' not found; skipping."
+        echo "[!] Warning: Unit '$svc' not found; skipping."
     fi
 done
 
@@ -432,9 +436,8 @@ echo "Enabling sudo access for wheel group..."
 sed -i 's/^# \%wheel ALL=(ALL:ALL) ALL/\%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
 
 # 5. PACMAN CONFIGURATION 
-echo "Configuring pacman turbo speeds and eye candy..."
-sed -i 's/^#ParallelDownloads/ParallelDownloads/; s/^#Color/Color/' /etc/pacman.conf
-grep -q "ILoveCandy" /etc/pacman.conf || sed -i '/^Color/a ILoveCandy' /etc/pacman.conf
+echo "Configuring pacman for performance..."
+sed -i 's/^# *ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
 
 # 6. ZRAM COMPRESSED MEMORY SETUP
 echo "Configuring zram-generator for compressed RAM swap..."
@@ -449,10 +452,11 @@ echo "Installing and configuring GRUB bootloader..."
 grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB 2>/dev/null || true
 
 if [[ "${ENABLE_OS_PROBER:-false}" == "true" ]]; then
-    echo "Dual-boot mode detected. Enabling os-prober..."
-    if grep -q "^#GRUB_DISABLE_OS_PROBER=false" /etc/default/grub; then
-        sed -i 's/^#GRUB_DISABLE_OS_PROBER=false/GRUB_DISABLE_OS_PROBER=false/' /etc/default/grub
-    elif ! grep -q "^GRUB_DISABLE_OS_PROBER=false" /etc/default/grub; then
+    echo "Dual-boot mode detected. Installing and enabling os-prober..."
+    pacman -S --noconfirm --needed os-prober
+    if grep -q "GRUB_DISABLE_OS_PROBER" /etc/default/grub; then
+        sed -i 's/^#* *GRUB_DISABLE_OS_PROBER=.*/GRUB_DISABLE_OS_PROBER=false/' /etc/default/grub
+    else
         echo "GRUB_DISABLE_OS_PROBER=false" >> /etc/default/grub
     fi
 fi
@@ -474,24 +478,18 @@ fi
 log_info "Enter password for ${TARGET_USER}:"
 arch-chroot /mnt passwd "${TARGET_USER}"
 
-read -rp "Initialize default home directories (Desktop, Downloads, etc.)? [N/y]: " INIT_DIRS
-if [[ "${INIT_DIRS:-N}" =~ ^[Yy]$ ]]; then
-    log_info "Initializing default home directories..."
-    arch-chroot /mnt su - "${TARGET_USER}" -c "xdg-user-dirs-update" 2>/dev/null || true
-fi
-
 echo -e "${BOLD}----------------------------------------------------${RESET}"
 log_success "Chroot configuration complete!"
 
-# ==============================================================================
 # --- PHASE 4: POST INSTALLATION CLEANUP & AUTO-REBOOT ---
-# ==============================================================================
+
 log_info "Unmounting partitions..."
 umount -R /mnt 2>/dev/null || true
 
 echo ""
 log_success "ARCH LINUX INSTALLATION FINISHED SUCCESSFULLY!"
-log_warn "Please remove your installation USB drive now."
+echo ""
+echo -e "\e[1;7;33m  >>> ACTION REQUIRED: Please remove your installation USB drive NOW! <<<  \e[0m"
 echo ""
 log_info "System will auto-reboot in 10 seconds. Press ANY KEY to abort..."
 

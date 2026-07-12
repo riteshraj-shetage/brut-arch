@@ -84,7 +84,7 @@ Once the target device path is verified with 100% certainty, execute the direct 
 # sudo dd bs=4M if=path/to/archlinux-version-x86_64.iso of=/dev/disk/by-id/usb-My_flash_drive conv=fsync oflag=direct status=progress
 ```
 
-The bootable installation medium (`Arch Installer`) is now ready.
+The Arch Linux Install Medium is now ready.
 
 # Prepare Target Machine
 
