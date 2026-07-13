@@ -77,12 +77,11 @@ TIMEZONE="Asia/Kolkata"
 LOCALE="en_US.UTF-8"          
 KEYBOARD_LAYOUT="us"
 MIRROR_COUNTRY="India"
-FS_TYPE="ext4"     
 BOOT_SIZE="+1G"
 
 # --- LIVE ISO ENVIRONMENT SETUP ---
 log_info "Configuring live ISO environment..."
-loadkeys "${KEYBOARD_LAYOUT}"
+loadkeys "${KEYBOARD_LAYOUT:-us}"
 timedatectl set-ntp true
 
 log_info "Refreshing Arch Linux keyring to prevent PGP signature failures..."
@@ -210,8 +209,8 @@ if [[ "$SKIP_DISK_SETUP" == "false" ]]; then
         sgdisk --zap-all "${DISK}"
 
         log_info "Creating new GPT partitions (EFI + Root + Home)..."
-        sgdisk --new=1:0:${BOOT_SIZE} --typecode=1:ef00 --change-name=1:"EFI" "${DISK}"
-        sgdisk --new=2:0:${ROOT_SIZE} --typecode=2:8304 --change-name=2:"ROOT" "${DISK}"
+        sgdisk --new=1:0:"${BOOT_SIZE}" --typecode=1:ef00 --change-name=1:"EFI" "${DISK}"
+        sgdisk --new=2:0:"${ROOT_SIZE}" --typecode=2:8304 --change-name=2:"ROOT" "${DISK}"
         sgdisk --new=3:0:0            --typecode=3:8302 --change-name=3:"HOME" "${DISK}"
         partprobe "${DISK}"
         sleep 2
