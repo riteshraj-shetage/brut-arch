@@ -402,7 +402,7 @@ echo "Configuring locale (${LOCALE})..."
 sed -i "s/^#\(${LOCALE}\)/\1/" /etc/locale.gen
 locale-gen
 echo "LANG=${LOCALE}" > /etc/locale.conf
-echo "KEYMAP=${KEYBOARD_LAYOUT}" > /etc/vconsole.conf
+echo "KEYMAP=${KEYBOARD_LAYOUT:-us}" > /etc/vconsole.conf
 
 # 3. NETWORK CONFIGURATION 
 echo "Setting hostname to ${HOSTNAME}..."
@@ -466,7 +466,6 @@ for svc in "${SYS_SERVICES[@]}" "${TARGET_SERVICES[@]:-}"; do
         echo "[!] Warning: Unit '$svc' not found or invalid; skipping."
     fi
 done
-
 
 log_info "Configuring root password..."
 arch-chroot /mnt passwd root
