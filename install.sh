@@ -19,9 +19,9 @@ log_error()   { echo -e "${RED}[x]${RESET} ${BOLD}$1${RESET}"; }
 # --- BANNER DISPLAY ---
 show_banner() {
     clear
-    echo -e "${BOLD}====================================================${RESET}"
-    echo -e "${BOLD}             ARCH LINUX INSTALL SCRIPT              ${RESET}"
-    echo -e "${BOLD}====================================================${RESET}\n"
+    echo -e "${BOLD}==================================================${RESET}"
+    echo -e "${BOLD}            BRUT ARCH LINUX INSTALLER             ${RESET}"
+    echo -e "${BOLD}==================================================${RESET}\n"
 }
 
 # --- RETRY HELPER ---
@@ -91,10 +91,10 @@ log_info "Configuring pacman..."
 sed -i 's/^# *ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
 
 log_info "Verifying internet connectivity..."
-retry ping -c 1 -W 3 archlinux.org >/dev/null
+retry ping -c 1 -W 3 archlinux.org >/dev/null && log_success "Connectivity verified."
 
-log_info "Updating pacman mirrorlist for ${MIRROR_COUNTRY} (this may take a few seconds)..."
-retry reflector --country "${MIRROR_COUNTRY}" --protocol https --latest 15 --sort rate --download-timeout 5 --save /etc/pacman.d/mirrorlist
+log_info "Synchronizing pacman mirrorlist..."
+reflector --latest 5 --protocol https --age 12 --sort rate --save /etc/pacman.d/mirrorlist && log_success "Mirrors synchronized."
 
 # --- RE-RUN DETECTION ---
 SKIP_DISK_SETUP="false"
