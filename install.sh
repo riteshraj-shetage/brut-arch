@@ -94,7 +94,7 @@ log_info "Verifying internet connectivity..."
 retry ping -c 1 -W 3 archlinux.org >/dev/null
 
 log_info "Updating pacman mirrorlist for ${MIRROR_COUNTRY} (this may take a few seconds)..."
-retry reflector --country "${MIRROR_COUNTRY}" --protocol https --latest 10 --sort age --save /etc/pacman.d/mirrorlist
+retry reflector --country "${MIRROR_COUNTRY}" --protocol https --latest 15 --sort rate --download-timeout 5 --save /etc/pacman.d/mirrorlist
 
 # --- RE-RUN DETECTION ---
 SKIP_DISK_SETUP="false"
