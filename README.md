@@ -1,6 +1,8 @@
-# <font color="#1793d1">Arch Linux</font> Installer
+<h1>
+  Base <a href=https://www.archlinux.org/>Arch Linux</a> Installer
+</h1>
 
-[![Shell Linting](https://img.shields.io/github/actions/workflow/status/riteshraj-shetage/brut-arch/shellcheck.yml?style=flat-square&label=ShellCheck&labelColor=111111&color=e5e5e5)](https://github.com/riteshraj-shetage/brut-arch/actions/workflows/shellcheck.yml)
+[![Shell Linting](https://img.shields.io/github/actions/workflow/status/riteshraj-shetage/brut-arch/shellcheck.yml?style=flat-square&label=ShellCheck&labelColor=101010&color=1793d1&logo=gnubash&logoColor=white)](https://github.com/riteshraj-shetage/brut-arch/actions/workflows/shellcheck.yml)
 
 _Bare-metal Arch Linux installer with dual-boot support_
 
@@ -43,10 +45,7 @@ An overview of the base system environment and packages deployed by default.
 - **Extra Packages:** Default [`packages.txt`](./packages.txt) / Remote URL / Manual add-ons
 - **Total Payload:** Less than `1GB` (~2GB Total Installed size) with default package selection
 
-### Installation Time
-
-> [!NOTE]  
-> The complete Arch Linux installation typically takes **~10 minutes** with the default package selection on a standard broadband connection.
+> The complete Base Arch Linux Installation typically takes **~10 minutes** with the default package selection on a standard broadband connection.
 
 ## References
 
