@@ -4,7 +4,8 @@
 
 [![Shell Linting](https://img.shields.io/github/actions/workflow/status/riteshraj-shetage/brut-arch/shellcheck.yml?style=flat-square&label=ShellCheck&labelColor=2a3238&color=4eaa25&logo=gnubash&logoColor=white)](https://github.com/riteshraj-shetage/brut-arch/actions/workflows/shellcheck.yml)
 
-**Bare-metal Arch Linux installer with dual-boot support.**  
+**Bare-metal Arch Linux installer with dual-boot support.**
+
 > Automated disk partitioning, pacstrap execution, and system configuration to boot into a pure TTY.
 
 ## Quickstart
@@ -15,10 +16,10 @@ Boot into the official [Arch Linux Live ISO](https://archlinux.org/download/), e
 > It is strongly recommended to try this installer inside a Virtual Machine (e.g., QEMU/KVM, VMware, VirtualBox) before running it on the target machine.
 
 ```bash
-curl -fSsL https://raw.githubusercontent.com/riteshraj-shetage/brut-arch/main/install.sh -o install.sh && chmod +x install.sh && ./install.sh
+bash <(curl -fSsL https://raw.githubusercontent.com/riteshraj-shetage/brut-arch/main/install.sh)
 ```
 
-**Read the [source code](./install.sh) before running, or execute at your own risk.**
+> Read the [source code](./install.sh) before running, or execute at your own risk.
 
 ## What's Included
 
