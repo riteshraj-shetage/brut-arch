@@ -2,7 +2,7 @@
   Brut <a href=https://www.archlinux.org/>Arch Linux</a> Installer
 </h1>
 
-[![Shell Linting](https://img.shields.io/github/actions/workflow/status/riteshraj-shetage/brut-arch/shellcheck.yml?style=flat-square&label=ShellCheck&labelColor=2a3238&color=4eaa25&logo=gnubash&logoColor=white)](https://github.com/riteshraj-shetage/brut-arch/actions/workflows/shellcheck.yml)
+[![Shell Linting](https://img.shields.io/github/actions/workflow/status/riteshraj-shetage/brut-arch/shellcheck.yml?style=flat-square&label=ShellCheck&labelColor=2a3238&logo=gnubash&logoColor=white)](https://github.com/riteshraj-shetage/brut-arch/actions/workflows/shellcheck.yml)
 
 **Bare-metal Arch Linux installer with dual-boot support.**
 

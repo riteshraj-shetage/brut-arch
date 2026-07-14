@@ -76,7 +76,6 @@ KERNEL_PKG="linux"
 TIMEZONE="Asia/Kolkata"       
 LOCALE="en_US.UTF-8"          
 KEYBOARD_LAYOUT="us"
-MIRROR_COUNTRY="India"
 BOOT_SIZE="+1G"
 
 # --- LIVE ISO ENVIRONMENT SETUP ---
