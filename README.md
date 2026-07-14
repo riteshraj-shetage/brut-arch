@@ -4,7 +4,8 @@
 
 [![Shell Linting](https://img.shields.io/github/actions/workflow/status/riteshraj-shetage/brut-arch/shellcheck.yml?style=flat-square&label=ShellCheck&labelColor=2a3238&color=4eaa25&logo=gnubash&logoColor=white)](https://github.com/riteshraj-shetage/brut-arch/actions/workflows/shellcheck.yml)
 
-_Bare-metal Arch Linux installer with dual-boot support_ Automates disk partitioning, base package bootstrapping, and system configuration to deploy a pure TTY.
+**Bare-metal Arch Linux installer with dual-boot support.**  
+> Automated disk partitioning, pacstrap execution, and system configuration to boot into a pure TTY.
 
 ## Quickstart
 
