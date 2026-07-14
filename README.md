@@ -1,5 +1,7 @@
 # <font color="#1793d1">Arch Linux</font> Installer
 
+[![Shell Linting](https://img.shields.io/github/actions/workflow/status/riteshraj-shetage/brut-arch/shellcheck.yml?style=flat-square&label=ShellCheck&labelColor=111111&color=e5e5e5)](https://github.com/riteshraj-shetage/brut-arch/actions/workflows/shellcheck.yml)
+
 _Bare-metal Arch Linux installer with dual-boot support_
 
 ## Quickstart
