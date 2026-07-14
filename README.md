@@ -1,10 +1,10 @@
 <h1>
-  Base <a href=https://www.archlinux.org/>Arch Linux</a> Installer
+  Brut <a href=https://www.archlinux.org/>Arch Linux</a> Installer
 </h1>
 
-[![Shell Linting](https://img.shields.io/github/actions/workflow/status/riteshraj-shetage/brut-arch/shellcheck.yml?style=flat-square&label=ShellCheck&labelColor=101010&color=1793d1&logo=gnubash&logoColor=white)](https://github.com/riteshraj-shetage/brut-arch/actions/workflows/shellcheck.yml)
+[![Shell Linting](https://img.shields.io/github/actions/workflow/status/riteshraj-shetage/brut-arch/shellcheck.yml?style=flat-square&label=ShellCheck&labelColor=2a3238&color=4eaa25&logo=gnubash&logoColor=white)](https://github.com/riteshraj-shetage/brut-arch/actions/workflows/shellcheck.yml)
 
-_Bare-metal Arch Linux installer with dual-boot support_
+_Bare-metal Arch Linux installer with dual-boot support_ Automates disk partitioning, base package bootstrapping, and system configuration to deploy a pure TTY.
 
 ## Quickstart
 
