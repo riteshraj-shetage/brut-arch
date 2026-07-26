@@ -13,7 +13,7 @@
 Boot into the official [Arch Linux Live ISO](https://archlinux.org/download/), ensure you have an active internet connection, and execute:
 
 > [!TIP]  
-> It is strongly recommended to try this installer inside a Virtual Machine (e.g., QEMU/KVM, VMware, VirtualBox) before running it on the target machine.
+> It is strongly recommended to try this installer inside a `Virtual Machine` (e.g., QEMU/KVM, VMware, VirtualBox) before running it on the target machine.
 
 ```bash
 bash <(curl -fSsL https://raw.githubusercontent.com/riteshraj-shetage/brut-arch/main/install.sh)
@@ -30,15 +30,16 @@ An overview of the base system environment and packages deployed by default.
 | **Bootloader**   | GRUB (automated `os-prober` for dual-boot) |
 | **Kernel**       | `linux` (with `intel-ucode`)               |
 | **Filesystem**   | ext4                                       |
-| **Partitioning** | EFI (1G) + Root (40G) + Home               |
+| **Partitioning** | `EFI` (1G) + `Root` (default 40G) + `Home` |
 | **Swap**         | zram (`zstd` compressed, up to 8GB)        |
 | **Network**      | NetworkManager (`iwd` backend)             |
 | **User**         | Single user with `sudo` access             |
-| **Locale**       | `en_US.UTF-8`                              |
-| **Audio**        | None                                       |
-| **Graphics**     | None                                       |
-| **Shell**        | `bash` default                             |
-| **Pacman**       | Parallel downloads enabled (`pacman.conf`) |
+| **Locale**       | Default `en_US.UTF-8`                      |
+| **Audio**        | **None**                                   |
+| **Bluetooth**    | **None**                                   |
+| **Graphics**     | **None**                                   |
+| **Shell**        | Default `bash`                             |
+| **Packages**     | Base + default `packages.txt`              |
 
 ### Package Manifest
 
